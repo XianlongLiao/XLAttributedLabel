@@ -24,6 +24,11 @@
 #pragma clang diagnostic pop
 
 /**
+ *  直接使用text会造成重复渲染，这里使用contentText中转下
+ */
+@property (nonatomic, strong) id contentText;
+
+/**
  *  常规富文本正则
  *
  *  @param regex 正则表达式

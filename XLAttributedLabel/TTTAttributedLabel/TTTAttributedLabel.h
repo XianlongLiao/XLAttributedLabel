@@ -256,6 +256,11 @@ IB_DESIGNABLE
  */
 @property (nonatomic, strong, readonly) UILongPressGestureRecognizer *longPressGestureRecognizer;
 
+/**
+ *  enable longPressGestureRecognizer default NO
+ */
+@property (nonatomic, assign) BOOL enableLongPressGrestureRecognizer;
+
 ///--------------------------------------------
 /// @name Calculating Size of Attributed String
 ///--------------------------------------------

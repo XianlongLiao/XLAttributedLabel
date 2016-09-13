@@ -15,13 +15,13 @@
 /**
  *  和字体高度的比例
  */
-const CGFloat kEmojiWidthRatioWithLineHeight = 1.15f;
+const CGFloat kXLEmojiWidthRatioWithLineHeight = 1.15f;
 
 /**
  *  表情绘制Y轴矫正值，和字体高度的比例，越大越往下
  */
-const CGFloat kEmojiOriginYOffsetRatioWithLineHeight = 0.10f;
-const CGFloat kAscentDescentScale = 0.25f;
+const CGFloat kXLEmojiOriginYOffsetRatioWithLineHeight = 0.10f;
+const CGFloat kXLAscentDescentScale = 0.25f;
 
 /**
  *  绘制表情，添加表情时的key，用来保存表情图片名称和读取
@@ -225,7 +225,7 @@ static CGFloat widthCallback(void *refCon) {
     _linkRegexAttributeds = [[NSMutableDictionary alloc] init];
     _linkAttachments = [NSMutableArray new];
     
-    self.emojiBundleName = @"emoji.bundle";
+    self.emojiBundleName = @"NIMKitResouce.bundle";
     self.isMatchHtmlLink = YES;
     
     self.numberOfLines = 0;
@@ -239,7 +239,7 @@ static CGFloat widthCallback(void *refCon) {
     NSMutableDictionary *linkAttributeds = [[NSMutableDictionary alloc] init];
     NSMutableDictionary *activeLinkAttributeds = [[NSMutableDictionary alloc] init];
     UIColor *commonLinkColor = [UIColor blueColor];
-    NSValue *edgeInsetsValue = [NSValue valueWithUIEdgeInsets:UIEdgeInsetsMake(2, 1, 2, 1)];
+    NSValue *edgeInsetsValue = [NSValue valueWithUIEdgeInsets:UIEdgeInsetsMake(1, 1, 1, 1)];
     
     
     [linkAttributeds setObject:commonLinkColor forKey:(NSString *)kCTForegroundColorAttributeName];
@@ -335,27 +335,28 @@ static CGFloat widthCallback(void *refCon) {
 
 //------------------------------------------------------------------------------------------------
 #pragma mark - set text
-#warning 为了避免重复渲染的问题 text值只能传入NSString类型
-- (void)setText:(id)text {
-    NSParameterAssert(!text || [text isKindOfClass:[NSAttributedString class]] || [text isKindOfClass:[NSString class]]);
-    
-    if ([text isKindOfClass:[NSString class]]) {
+
+- (void)setContentText:(id)contentText {
+    NSParameterAssert(!contentText || [contentText isKindOfClass:[NSAttributedString class]] || [contentText isKindOfClass:[NSString class]]);
+    [self.linkAttachments removeAllObjects];
+    _contentText = contentText;
+    if ([_contentText isKindOfClass:[NSString class]]) {
         __weak typeof(self) weakSelf = self;
-        [super setText:text afterInheritingLabelAttributesAndConfiguringWithBlock:^NSMutableAttributedString *(NSMutableAttributedString *mutableAttributedString) {
+        [super setText:_contentText afterInheritingLabelAttributesAndConfiguringWithBlock:^NSMutableAttributedString *(NSMutableAttributedString *mutableAttributedString) {
             return (id)[weakSelf regularExpressionAttributedStringFromText:mutableAttributedString];
         }];
-        //添加Link
-        if (self.linkAttachments.count > 0) {
-            NSMutableArray *results = [NSMutableArray new];
-            for (XLLinkAttachment *attachment in self.linkAttachments) {
-                NSTextCheckingResult *linkResult = [NSTextCheckingResult correctionCheckingResultWithRange:attachment.range
-                                                                                         replacementString:attachment.url];
-                [results addObject:linkResult];
-            }
-            [super addLinksWithTextCheckingResults:results attributes:self.linkAttributes];
-        }
     }else {
-        [super setText:text];
+        [super setText:_contentText];
+    }
+    //添加Link
+    if (self.linkAttachments.count > 0) {
+        NSMutableArray *results = [NSMutableArray new];
+        for (XLLinkAttachment *attachment in self.linkAttachments) {
+            NSTextCheckingResult *linkResult = [NSTextCheckingResult correctionCheckingResultWithRange:attachment.range
+                                                                                     replacementString:attachment.url];
+            [results addObject:linkResult];
+        }
+        [super addLinksWithTextCheckingResults:results attributes:self.linkAttributes];
     }
 }
 
@@ -373,7 +374,7 @@ static CGFloat widthCallback(void *refCon) {
             NSDictionary *plistDict = [[XLRegexPlistManager shareInstance] dictFromKey:plistName];
             NSRegularExpression *regular = [[XLRegexPlistManager shareInstance] regularExpressionForRegex:regex];
             __block NSInteger textOffset = 0;
-            __block CGFloat emojiWidth = self.font.lineHeight * kEmojiWidthRatioWithLineHeight;
+            __block CGFloat emojiWidth = self.font.lineHeight * kXLEmojiWidthRatioWithLineHeight;
             [regular enumerateMatchesInString:attributedText.string
                                       options:NSMatchingWithTransparentBounds
                                         range:NSMakeRange(0, [attributedStr.string length])
@@ -392,8 +393,8 @@ static CGFloat widthCallback(void *refCon) {
                                            // 这里设置下需要绘制的图片的大小，这里我自定义了一个结构体以便于存储数据
                                            CustomGlyphMetricsRef metrics = malloc(sizeof(CustomGlyphMetrics));
                                            metrics->width = emojiWidth;
-                                           metrics->ascent = 1 / (1 + kAscentDescentScale)*metrics->width;
-                                           metrics->descent = metrics->ascent*kAscentDescentScale;
+                                           metrics->ascent = 1 / (1 + kXLAscentDescentScale)*metrics->width;
+                                           metrics->descent = metrics->ascent*kXLAscentDescentScale;
                                            CTRunDelegateRef delegate = CTRunDelegateCreate(&callbacks, metrics);
                                            [attributedStr addAttribute:(NSString *)kCTRunDelegateAttributeName
                                                                  value:(__bridge id)delegate
@@ -468,6 +469,9 @@ static CGFloat widthCallback(void *refCon) {
  *  @return attachments
  */
 - (NSArray *)htmlAttachmentsWithContentString:(NSString *)contentString fromMatches:(NSArray *)matches {
+    if (matches.count % 2 != 0) {
+        return nil;
+    }
     NSMutableArray *attachments = [NSMutableArray new];
     CGFloat offsetLocation = 0;
     for (int i = 0; i < matches.count; i += 2) {
@@ -489,14 +493,16 @@ static CGFloat widthCallback(void *refCon) {
         //url
         NSRegularExpression *urlRegular = [[XLRegexPlistManager shareInstance] regularExpressionForRegex:kHttpURLRegexExpression];
         NSTextCheckingResult *urlResult = [urlRegular firstMatchInString:preHtmlTag options:0x00 range:NSMakeRange(0, preHtmlTag.length)];
-        NSString *url = [preHtmlTag substringWithRange:NSMakeRange(urlResult.range.location, urlResult.range.length - 2)]; //这里减去2是为了去除多余的">
+        if (urlResult) {
+            NSString *url = [preHtmlTag substringWithRange:NSMakeRange(urlResult.range.location, urlResult.range.length - 2)]; //这里减去2是为了去除多余的">
+            XLLinkAttachment *htmlAttachment = [[XLLinkAttachment alloc] initWithString:string
+                                                                                  range:range
+                                                                                    url:url];
+            [attachments addObject:htmlAttachment];
+            
+            offsetLocation += htmlTagPreResult.range.length + htmlTagSufResult.range.length;
+        }
         
-        XLLinkAttachment *htmlAttachment = [[XLLinkAttachment alloc] initWithString:string
-                                                                              range:range
-                                                                                url:url];
-        [attachments addObject:htmlAttachment];
-        
-        offsetLocation += htmlTagPreResult.range.length + htmlTagSufResult.range.length;
     }
     return attachments;
 }
@@ -508,8 +514,8 @@ static CGFloat widthCallback(void *refCon) {
 {
     [super drawStrike:frame inRect:rect context:c];
     
-    CGFloat emojiWith = self.font.lineHeight * kEmojiWidthRatioWithLineHeight;
-    CGFloat emojiOriginYOffset = self.font.lineHeight * kEmojiOriginYOffsetRatioWithLineHeight;
+    CGFloat emojiWith = self.font.lineHeight * kXLEmojiWidthRatioWithLineHeight;
+    CGFloat emojiOriginYOffset = self.font.lineHeight * kXLEmojiOriginYOffsetRatioWithLineHeight;
     
     CGFloat flushFactor = TTTFlushFactorForTextAlignment(self.textAlignment);
     
@@ -595,6 +601,7 @@ static CGFloat widthCallback(void *refCon) {
                 runBounds.origin.y = lineOrigins[lineIndex].y;
                 runBounds.origin.y -= runDescent;
                 
+                imageName = [NSString stringWithFormat:@"Emoticon/Emoji/%@", imageName];
                 NSString *imagePath = [self.emojiBundleName stringByAppendingPathComponent:imageName];
                 UIImage *image = [UIImage imageNamed:imagePath];
                 runBounds.origin.y -= emojiOriginYOffset; //稍微矫正下。
@@ -609,7 +616,7 @@ static CGFloat widthCallback(void *refCon) {
 - (void)touchesEnded:(NSSet *)touches
            withEvent:(UIEvent *)event
 {
-    //如果delegate实现了mlEmojiLabel自身的选择link方法
+    //如果delegate实现了XLAttributedLabel自身的选择link方法
     if(self.delegate && [self.delegate respondsToSelector:@selector(attributedLable:didSelectedLink:)]){
         if (self.activeLink && self.activeLink.result.resultType == NSTextCheckingTypeCorrection) {
             NSTextCheckingResult *result = self.activeLink.result;

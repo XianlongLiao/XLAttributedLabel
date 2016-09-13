@@ -60,7 +60,7 @@
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     CustomTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"CustomTableViewCell"
                                                                 forIndexPath:indexPath];
-    cell.attriubtedLabel.text = kDemoText;
+    cell.attriubtedLabel.contentText = kDemoText;
     return cell;
 }
 
